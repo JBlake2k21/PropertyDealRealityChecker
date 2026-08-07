@@ -1,0 +1,31 @@
+# Xcode / Swift
+.DS_Store
+/.build
+/Packages
+/*.xcodeproj/project.xcworkspace/xcuserdata/
+/*.xcodeproj/xcuserdata/
+/*.xcworkspace/xcuserdata/
+/*.swiftpm/xcode/
+/*.swiftpm/configuration/
+/*.savedState
+/DerivedData/
+*.moved-aside
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+*.xcdatamodeld/.xccurrentversion
+*.build/
+
+# macOS / OS Files
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Test / Fixture Output Artifacts
+*.pdf_export_test
+*.csv_export_test
