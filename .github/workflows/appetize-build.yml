@@ -28,7 +28,7 @@ jobs:
             -sdk iphonesimulator \
             -destination 'platform=iOS Simulator,name=iPhone 16' \
             -configuration Debug \
-            derivedDataPath build \
+            -derivedDataPath build \
             clean build
 
       - name: Zip the Application Bundle
