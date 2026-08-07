@@ -23,7 +23,6 @@ jobs:
         run: |
           # Build the workspace for the iOS Simulator using the RealityCheckerApp scheme
           xcodebuild \
-            -workspace PropertyDealRealityChecker.xcworkspace \
             -scheme RealityCheckerApp \
             -sdk iphonesimulator \
             -destination 'platform=iOS Simulator,name=iPhone 16' \
