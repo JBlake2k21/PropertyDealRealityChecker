@@ -90,7 +90,7 @@ public struct DealEntryView: View {
             onCommit?(canonical)
         } catch {
             viewModel.validationIssues.append(
-                ValidationIssue(severity: .error, field: "Form", message: "Failed to commit deal: \(error)")
+                ValidationIssue(code: "ERR-001", severity: .error, field: "Form", message: "Failed to commit deal: \(error)")
             )
         }
     }
