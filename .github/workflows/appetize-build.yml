@@ -119,15 +119,60 @@ jobs:
           echo "app_path=$APP_PATH" >> $GITHUB_OUTPUT
 
       - name: Zip the .app bundle
+        id: zip
         if: always()
         run: |
           set -euo pipefail
           APP_PATH="${{ steps.build.outputs.app_path }}"
           ZIP_NAME="RealityCheckerApp.app.zip"
-          echo "Zipping $APP_PATH -> $ZIP_NAME"
+          ZIP_FULL="${GITHUB_WORKSPACE}/${ZIP_NAME}"
+
+          echo "Zipping $APP_PATH -> $ZIP_FULL"
+
+          # Validate APP_PATH exists and is readable
+          if [ -z "$APP_PATH" ] || [ ! -d "$APP_PATH" ]; then
+            echo "ERROR: APP_PATH is empty or not a directory: '$APP_PATH'"
+            echo "Listing DerivedData directory to help debug:"
+            ls -la "${DERIVED_DATA}" || true
+            # Preserve failure in this step so we don't attempt to upload a missing zip
+            exit 1
+          fi
+
           cd "$(dirname "$APP_PATH")"
-          zip -r -y "${GITHUB_WORKSPACE}/${ZIP_NAME}" "$(basename "$APP_PATH")"
-          echo "Created zip at ${GITHUB_WORKSPACE}/${ZIP_NAME}"
+          # Create zip at a known absolute path
+          zip -r -y "$ZIP_FULL" "$(basename "$APP_PATH")"
+
+          if [ ! -f "$ZIP_FULL" ]; then
+            echo "ERROR: Failed to create zip at $ZIP_FULL"
+            ls -la "$(dirname "$ZIP_FULL")" || true
+            exit 1
+          fi
+
+          echo "Created zip at $ZIP_FULL"
+          # Expose zip path for later steps
+          echo "zip_path=$ZIP_FULL" >> $GITHUB_OUTPUT
+        env:
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+
+      - name: Pre-upload debug (show ZIP and workspace)
+        if: always()
+        run: |
+          set -euo pipefail
+          echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE}"
+          pwd
+          echo "Workspace listing (top-level):"
+          ls -la || true
+          ZIP="${{ steps.zip.outputs.zip_path }}"
+          echo "ZIP path to upload: $ZIP"
+          if [ -f "$ZIP" ]; then
+            echo "ZIP exists:" 
+            ls -la "$ZIP"
+            echo "Head of file (first 64 bytes) for readability check:"
+            head -c 64 "$ZIP" | hexdump -C || true
+          else
+            echo "ERROR: ZIP not found at $ZIP"
+            exit 1
+          fi
         env:
           GITHUB_WORKSPACE: ${{ github.workspace }}
 
@@ -137,16 +182,17 @@ jobs:
           APPETIZE_TOKEN: ${{ secrets.APPETIZE_API_TOKEN }}
         run: |
           set -euo pipefail
-          ZIP="${GITHUB_WORKSPACE}/RealityCheckerApp.app.zip"
-          
-          CURL_OPTS=( --fail --show-error --location --silent )
+          ZIP="${{ steps.zip.outputs.zip_path }}"
+
+          CURL_OPTS=( --fail --show-error --location )
           # Retry on transient network errors
           CURL_OPTS+=( --retry 5 --retry-delay 10 --retry-connrefused --max-time 600 )
-          
+
           # Force insecure if corporate MITM proxy blocks Appetize certs
           CURL_OPTS+=( --insecure )
 
           echo "Uploading $ZIP to Appetize.io ..."
+          # Use verbose output for CI logs to help diagnose issues; remove --silent
           curl "${CURL_OPTS[@]}" \
             -F "token=${APPETIZE_TOKEN}" \
             -F "file=@${ZIP}" \
