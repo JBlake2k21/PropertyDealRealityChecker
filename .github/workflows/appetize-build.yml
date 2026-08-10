@@ -49,7 +49,7 @@ jobs:
             RealityCheckerPackage:
               path: .
           targets:
-            RealityCheckerApp:
+            RealityCheckerWrapperApp:
               type: application
               platform: iOS
               deploymentTarget: "18.0"
@@ -97,7 +97,7 @@ jobs:
           set -euo pipefail
           echo "Cleaning and building via xcodebuild..."
           xcodebuild -project "RealityCheckerWrapper.xcodeproj" \
-            -scheme "RealityCheckerApp" \
+            -scheme "RealityCheckerWrapperApp" \
             -configuration Release \
             -destination "platform=iOS Simulator,name=${SIMULATOR_NAME}" \
             -derivedDataPath "${DERIVED_DATA}" \
@@ -106,9 +106,9 @@ jobs:
           echo "xcodebuild exit status: $?"
 
           # Try to find the built .app path
-          APP_PATH=$(find "${DERIVED_DATA}" -name "RealityCheckerApp.app" -print -quit || true)
+          APP_PATH=$(find "${DERIVED_DATA}" -name "RealityCheckerWrapperApp.app" -print -quit || true)
           if [ -z "$APP_PATH" ]; then
-            echo "ERROR: Could not find RealityCheckerApp.app in DerivedData."
+            echo "ERROR: Could not find RealityCheckerWrapperApp.app in DerivedData."
             find "${DERIVED_DATA}" -print -maxdepth 10 || true
             exit 2
           fi
