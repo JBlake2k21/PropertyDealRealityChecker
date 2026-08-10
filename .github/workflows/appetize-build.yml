@@ -34,7 +34,9 @@ jobs:
           # Create a dummy Swift file for xcodegen to use as a source
           mkdir -p AppWrapper
           cat > AppWrapper/Dummy.swift <<'SWIFT'
-          // Dummy file for Xcode project wrapper
+          import Foundation
+          import RealityCheckerApp
+          // Dummy file to ensure xcodegen compiles this module and links the RealityCheckerApp library
           SWIFT
 
           # Create project.yml that makes an iOS app target using the SPM library
@@ -61,6 +63,7 @@ jobs:
               settings:
                 PRODUCT_BUNDLE_IDENTIFIER: com.example.RealityCheckerApp
                 INFOPLIST_FILE: Info.plist
+                OTHER_LDFLAGS: -all_load
           YML
 
           # Minimal Info.plist placed next to the target sources
@@ -70,10 +73,10 @@ jobs:
           <plist version="1.0">
           <dict>
             <key>CFBundleDevelopmentRegion</key><string>en</string>
-            <key>CFBundleExecutable</key><string>RealityCheckerApp</string>
-            <key>CFBundleIdentifier</key><string>com.example.RealityCheckerApp</string>
+            <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
+            <key>CFBundleIdentifier</key><string>com.example.$(PRODUCT_NAME:rfc1034identifier)</string>
             <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-            <key>CFBundleName</key><string>RealityCheckerApp</string>
+            <key>CFBundleName</key><string>$(PRODUCT_NAME)</string>
             <key>CFBundlePackageType</key><string>APPL</string>
             <key>CFBundleShortVersionString</key><string>1.0</string>
             <key>CFBundleVersion</key><string>1</string>
