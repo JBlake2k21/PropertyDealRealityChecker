@@ -12,7 +12,7 @@ jobs:
       SIMULATOR_NAME: "iPhone 17"
       DERIVED_DATA: "${{ github.workspace }}/build/DerivedData"
       PROJECT_NAME: RealityCheckerWrapper
-      TARGET_NAME: RealityCheckerApp
+      TARGET_NAME: RealityCheckerWrapperApp
       DEPLOYMENT_TARGET: "18.0"
       APPETIZE_API_URL: "https://api.appetize.io/v1/apps/upload"
     steps:
