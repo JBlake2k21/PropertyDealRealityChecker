@@ -36,8 +36,8 @@ public final class DashboardViewModel: @unchecked Sendable {
         // 1. Metric Cards
         let capRateText = String(format: "%.2f%%", NSDecimalNumber(decimal: snapshot.metrics.capRate.percentage).doubleValue)
         let cocText = String(format: "%.2f%%", NSDecimalNumber(decimal: snapshot.metrics.cashOnCashReturn.percentage).doubleValue)
-        let dscrText = String(format: "%.2fx", NSDecimalNumber(decimal: snapshot.metrics.debtServiceCoverageRatio).doubleValue)
-        let beText = String(format: "%.1f%%", NSDecimalNumber(decimal: snapshot.metrics.breakEvenOccupancy.percentage).doubleValue)
+        let dscrText = String(format: "%.2fx", NSDecimalNumber(decimal: snapshot.metrics.dscr).doubleValue)
+        let beText = String(format: "%.1f%%", NSDecimalNumber(decimal: snapshot.metrics.breakEvenOccupancyRate.percentage).doubleValue)
         
         let categoryRaw = snapshot.verdict.category.rawValue
         
@@ -73,8 +73,8 @@ public final class DashboardViewModel: @unchecked Sendable {
         ]
         
         // 2. Reason Rows
-        self.reasonRows = snapshot.verdict.reasons.map { reason in
-            let isPass = reason.code.hasPrefix("DSCR") ? (snapshot.metrics.debtServiceCoverageRatio >= Decimal(string: "1.25")!) : true
+        self.reasonRows = snapshot.verdict.reasonCodes.map { reason in
+            let isPass = reason.code.hasPrefix("DSCR") ? (snapshot.metrics.dscr >= Decimal(string: "1.25")!) : true
             return ReasonCodeRowModel(
                 code: reason.code,
                 metricName: reason.code,
@@ -90,8 +90,8 @@ public final class DashboardViewModel: @unchecked Sendable {
         let egiText = "$\(NSDecimalNumber(decimal: snapshot.metrics.effectiveGrossIncome.amount))"
         let noiText = "$\(NSDecimalNumber(decimal: snapshot.metrics.netOperatingIncome.amount))"
         let dsText = "$\(NSDecimalNumber(decimal: snapshot.metrics.annualDebtService.amount))"
-        let cfText = "$\(NSDecimalNumber(decimal: snapshot.metrics.preTaxCashFlow.amount))"
-        let positiveCF = snapshot.metrics.preTaxCashFlow.amount >= 0
+        let cfText = "$\(NSDecimalNumber(decimal: snapshot.metrics.ownerCashFlow.amount))"
+        let positiveCF = snapshot.metrics.ownerCashFlow.amount >= 0
         
         self.waterfallModel = CashFlowWaterfallChartModel(
             gsiText: gsiText,
@@ -108,7 +108,7 @@ public final class DashboardViewModel: @unchecked Sendable {
             colLabel: "Base",
             primaryMetricText: "NOI: \(noiText)",
             secondaryMetricText: "DSCR: \(dscrText)",
-            isPassing: snapshot.metrics.debtServiceCoverageRatio >= Decimal(string: "1.25")!
+            isPassing: snapshot.metrics.dscr >= Decimal(string: "1.25")!
         )
         self.stressGridModel = SensitivityMatrixGridModel(
             matrixTitle: "Price vs Vacancy Stress Grid",
