@@ -88,7 +88,7 @@ public final class DealEntryViewModel: @unchecked Sendable {
             )
         ])
         
-        self.validationIssues = draftDeal.validateDraft()
+        self.validationIssues = draftDeal.validate()
     }
     
     /// Validates the current draft deal and returns non-blocking validation findings.
