@@ -17,17 +17,36 @@ import DesignSystem
 
 /// The main application navigation tab view.
 public struct MainTabView: View {
-    @State private var dashboardViewModel = DashboardViewModel()
+    @State private var dashboardViewModel: DashboardViewModel
     @State private var scenarioViewModel = ScenarioComparisonViewModel()
     
-    public init() {}
+    public init() {
+        let sampleDeal = Deal(name: "Sample Property", address: "123 Main St")
+        let canonical = CanonicalDeal(
+            id: sampleDeal.id,
+            name: sampleDeal.name,
+            address: sampleDeal.address,
+            strategy: sampleDeal.strategy,
+            property: sampleDeal.property,
+            scenario: sampleDeal.activeScenario
+        )
+        let snapshot = CalculationSnapshot(
+            dealID: sampleDeal.id,
+            scenarioID: sampleDeal.activeScenario.id,
+            inputHash: canonical.inputHash,
+            normalizedInputs: canonical,
+            metrics: CalculationMetrics(),
+            verdict: Verdict(category: .workable, confidence: .high)
+        )
+        _dashboardViewModel = State(initialValue: DashboardViewModel(snapshot: snapshot))
+    }
     
     public var body: some View {
         TabView {
             NavigationView {
                 DealEntryView(viewModel: DealEntryViewModel()) { deal in
                     // Handle deal commit here
-                    print("Deal committed: \(deal.property.address)")
+                    print("Deal committed: \(deal.address)")
                 }
             }
             .tabItem {
