@@ -12,7 +12,7 @@ let package = Package(
     ],
     products: [
         // App Core Target
-        .executable(name: "RealityCheckerApp", targets: ["RealityCheckerApp"]),
+        .library(name: "RealityCheckerApp", targets: ["RealityCheckerApp"]),
         
         // Domain & Calculation Engine
         .library(name: "DealCore", targets: ["DealCore"]),
@@ -93,7 +93,7 @@ let package = Package(
         ),
         
         // 8. Application Shell & Dependency Container
-        .executableTarget(
+        .target(
             name: "RealityCheckerApp",
             dependencies: [
                 "DealCore",

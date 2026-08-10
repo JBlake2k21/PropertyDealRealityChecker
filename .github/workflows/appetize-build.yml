@@ -1,54 +1,150 @@
-name: Appetize.io iOS Simulator Build
+name: Build iOS Simulator .app and upload to Appetize
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
-  build_and_upload:
+  build-and-upload:
     runs-on: macos-latest
-    
+    env:
+      SIMULATOR_NAME: "iPhone 15 Pro"
+      DERIVED_DATA: "${{ github.workspace }}/build/DerivedData"
+      PROJECT_NAME: RealityCheckerWrapper
+      TARGET_NAME: RealityCheckerApp
+      DEPLOYMENT_TARGET: "18.0"
+      APPETIZE_API_URL: "https://api.appetize.io/v1/apps/upload"
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select latest Xcode
-        uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: latest-stable
-          
-      - name: Build for iOS Simulator
+      - name: Ensure Homebrew and xcodegen available
         run: |
-          # Build the workspace for the iOS Simulator using the RealityCheckerApp scheme
-          xcodebuild \
-            -scheme RealityCheckerApp \
-            -sdk iphonesimulator \
-            -destination 'platform=iOS Simulator,name=iPhone 15 Pro' \
-            -configuration Debug \
-            -derivedDataPath build \
-            clean build
+          echo "Installing xcodegen (if not installed)..."
+          if ! command -v xcodegen >/dev/null; then
+            brew update
+            brew install xcodegen
+          else
+            echo "xcodegen already present: $(xcodegen version)"
+          fi
 
-      - name: Zip the Application Bundle
+      - name: Create temporary project.yml + Info.plist
         run: |
-          cd build/Build/Products/Debug-iphonesimulator
-          # The resulting .app must be zipped before uploading to Appetize
-          zip -r RealityCheckerApp.zip RealityCheckerApp.app
-          
-      - name: Upload to Appetize.io
+          # Create a dummy Swift file for xcodegen to use as a source
+          mkdir -p AppWrapper
+          cat > AppWrapper/Dummy.swift <<'SWIFT'
+          // Dummy file for Xcode project wrapper
+          SWIFT
+
+          # Create project.yml that makes an iOS app target using the SPM library
+          cat > project.yml <<'YML'
+          name: RealityCheckerWrapper
+          options:
+            bundleIdPrefix: com.example
+          configs:
+            Debug: debug
+            Release: release
+          packages:
+            RealityCheckerPackage:
+              path: .
+          targets:
+            RealityCheckerApp:
+              type: application
+              platform: iOS
+              deploymentTarget: "18.0"
+              sources: 
+                - path: AppWrapper
+              dependencies:
+                - package: RealityCheckerPackage
+                  product: RealityCheckerApp
+              settings:
+                PRODUCT_BUNDLE_IDENTIFIER: com.example.RealityCheckerApp
+                INFOPLIST_FILE: Info.plist
+          YML
+
+          # Minimal Info.plist placed next to the target sources
+          cat > Info.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleDevelopmentRegion</key><string>en</string>
+            <key>CFBundleExecutable</key><string>RealityCheckerApp</string>
+            <key>CFBundleIdentifier</key><string>com.example.RealityCheckerApp</string>
+            <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
+            <key>CFBundleName</key><string>RealityCheckerApp</string>
+            <key>CFBundlePackageType</key><string>APPL</string>
+            <key>CFBundleShortVersionString</key><string>1.0</string>
+            <key>CFBundleVersion</key><string>1</string>
+            <key>UILaunchStoryboardName</key><string></string>
+            <key>UISupportedInterfaceOrientations</key>
+            <array>
+              <string>UIInterfaceOrientationPortrait</string>
+            </array>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Run xcodegen to generate Xcode project
+        run: |
+          xcodegen generate --spec project.yml
+          echo "Generated project: RealityCheckerWrapper.xcodeproj"
+
+      - name: Build for iOS Simulator (Release)
+        id: build
+        run: |
+          set -euo pipefail
+          echo "Cleaning and building via xcodebuild..."
+          xcodebuild -project "RealityCheckerWrapper.xcodeproj" \
+            -scheme "RealityCheckerApp" \
+            -configuration Release \
+            -destination "platform=iOS Simulator,name=${SIMULATOR_NAME}" \
+            -derivedDataPath "${DERIVED_DATA}" \
+            clean build CODE_SIGNING_ALLOWED=NO
+
+          echo "xcodebuild exit status: $?"
+
+          # Try to find the built .app path
+          APP_PATH=$(find "${DERIVED_DATA}" -name "RealityCheckerApp.app" -print -quit || true)
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: Could not find RealityCheckerApp.app in DerivedData."
+            find "${DERIVED_DATA}" -print -maxdepth 10 || true
+            exit 2
+          fi
+          echo "Found app at: $APP_PATH"
+          echo "app_path=$APP_PATH" >> $GITHUB_OUTPUT
+
+      - name: Zip the .app bundle
+        if: always()
+        run: |
+          set -euo pipefail
+          APP_PATH="${{ steps.build.outputs.app_path }}"
+          ZIP_NAME="RealityCheckerApp.app.zip"
+          echo "Zipping $APP_PATH -> $ZIP_NAME"
+          cd "$(dirname "$APP_PATH")"
+          zip -r -y "${GITHUB_WORKSPACE}/${ZIP_NAME}" "$(basename "$APP_PATH")"
+          echo "Created zip at ${GITHUB_WORKSPACE}/${ZIP_NAME}"
         env:
-          APPETIZE_API_TOKEN: ${{ secrets.APPETIZE_API_TOKEN }}
+          GITHUB_WORKSPACE: ${{ github.workspace }}
+
+      - name: Upload ZIP to Appetize.io (curl with proxy flags)
+        if: always()
+        env:
+          APPETIZE_TOKEN: ${{ secrets.APPETIZE_API_TOKEN }}
         run: |
-          cd build/Build/Products/Debug-iphonesimulator
+          set -euo pipefail
+          ZIP="${GITHUB_WORKSPACE}/RealityCheckerApp.app.zip"
           
-          # Upload the zip to Appetize using their API
-          curl --http1.1 -F "file=@RealityCheckerApp.zip" \
-               -F "platform=ios" \
-               -F "fileType=zip" \
-               -F "note=Reality Checker Build via GitHub Actions" \
-               -H "Authorization: Bearer $APPETIZE_API_TOKEN" \
-               https://api.appetize.io/v1/apps
-               
-          echo ""
-          echo "Upload complete! Check your Appetize.io dashboard for the preview link."
+          CURL_OPTS=( --fail --show-error --location --silent )
+          # Retry on transient network errors
+          CURL_OPTS+=( --retry 5 --retry-delay 10 --retry-connrefused --max-time 600 )
+          
+          # Force insecure if corporate MITM proxy blocks Appetize certs
+          CURL_OPTS+=( --insecure )
+
+          echo "Uploading $ZIP to Appetize.io ..."
+          curl "${CURL_OPTS[@]}" \
+            -F "token=${APPETIZE_TOKEN}" \
+            -F "file=@${ZIP}" \
+            "${APPETIZE_API_URL}"
