@@ -9,7 +9,7 @@ jobs:
   build-and-upload:
     runs-on: macos-latest
     env:
-      SIMULATOR_NAME: "iPhone 15 Pro"
+      SIMULATOR_NAME: "iPhone 17"
       DERIVED_DATA: "${{ github.workspace }}/build/DerivedData"
       PROJECT_NAME: RealityCheckerWrapper
       TARGET_NAME: RealityCheckerApp
