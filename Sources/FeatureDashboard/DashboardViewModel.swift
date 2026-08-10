@@ -81,7 +81,7 @@ public final class DashboardViewModel: @unchecked Sendable {
                 actualValue: "Observed",
                 thresholdValue: "Required",
                 isSuccess: isPass,
-                explanation: reason.explanation
+                explanation: reason.plainLanguageExplanation
             )
         }
         
