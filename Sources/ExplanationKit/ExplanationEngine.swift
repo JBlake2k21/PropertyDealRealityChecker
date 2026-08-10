@@ -64,8 +64,8 @@ public struct ExplanationEngine: Sendable {
             return "Medium"
         case .low:
             return "Low"
-        case .none:
-            return "Zero"
+        case .unverified:
+            return "Unverified"
         }
     }
 }
